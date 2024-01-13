@@ -42,4 +42,11 @@ impl Serial {
             self.serial.write_str(s).unwrap();
         }
     }
+
+    pub fn read(&mut self) -> char {
+        let mut data: [u8; 1] = [0; 1];
+        let _ = self.serial.read(&mut data);
+
+        char::from(data[0])
+    }
 }
