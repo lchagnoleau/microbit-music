@@ -3,25 +3,36 @@
 #![no_std]
 
 mod speaker;
-mod uart;
+mod serial;
+mod music;
 
 use cortex_m_rt::entry;
-use microbit::board::Board;
+use hal::gpio::{p0, p1};
+use nrf52833_hal as hal;
 use panic_halt as _;
+use rtt_target::{rtt_init_print, rprintln};
 use speaker::Speaker;
-use uart::Uart;
+use serial::Serial;
+use music::get_freq;
 
 #[entry]
 fn main() -> ! {
-    let board = Board::take().unwrap();
-    let mut uart = Uart::new(board.UARTE0, board.uart.into());
-    let mut speaker = Speaker::new(board.speaker_pin, board.PWM0);
+    rtt_init_print!();
+    rprintln!("Starting up!");
 
-    speaker.play_note(0);
+    let pac = hal::pac::Peripherals::take().unwrap();
+    let p0 = p0::Parts::new(pac.P0);
+    let p1 = p1::Parts::new(pac.P1);
 
-    uart.write(b"Hello, world!\r\n");
+    let mut serial = Serial::new(pac.UARTE0, p0.p0_06, p1.p1_08);
+    let mut speaker = Speaker::new(pac.PWM0, p0.p0_00);
+
+    serial.write(b"Hello, world!\r\n");
 
     loop {
-        uart.write(b"Hello, world!\r\n");
+        let note_freq = get_freq(serial.read());
+        rprintln!("new note: {}", note_freq);
+        speaker.play_note(note_freq);
+        rprintln!("note played");
     }
 }
