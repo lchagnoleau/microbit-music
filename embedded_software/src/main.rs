@@ -2,7 +2,7 @@
 #![no_main]
 #![no_std]
 
-// mod speaker;
+mod speaker;
 mod serial;
 mod music;
 
@@ -11,7 +11,7 @@ use hal::gpio::{p0, p1};
 use nrf52833_hal as hal;
 use panic_halt as _;
 use rtt_target::{rtt_init_print, rprintln};
-// use speaker::Speaker;
+use speaker::Speaker;
 use serial::Serial;
 use music::get_freq;
 
@@ -25,12 +25,14 @@ fn main() -> ! {
     let p1 = p1::Parts::new(pac.P1);
 
     let mut serial = Serial::new(pac.UARTE0, p0.p0_06, p1.p1_08);
+    let mut speaker = Speaker::new(pac.PWM0, p0.p0_00);
 
     serial.write(b"Hello, world!\r\n");
 
-    let mut note_freq: u32 = 0;
     loop {
-        note_freq = get_freq(serial.read());
+        let note_freq = get_freq(serial.read());
         rprintln!("new note: {}", note_freq);
+        speaker.play_note(note_freq);
+        rprintln!("note played");
     }
 }
