@@ -2,26 +2,41 @@
 #![no_main]
 #![no_std]
 
-mod speaker;
-mod uart;
+// mod speaker;
+// mod uart;
 
+use core::fmt::Write;
 use cortex_m_rt::entry;
-use microbit::board::Board;
+use hal::{gpio, uarte, uarte::Uarte};
+use nrf52833_hal as hal;
 use panic_halt as _;
-use speaker::Speaker;
-use uart::Uart;
+// use speaker::Speaker;
+// use uart::Uart;
 
 #[entry]
 fn main() -> ! {
-    let board = Board::take().unwrap();
-    let mut uart = Uart::new(board.UARTE0, board.uart.into());
-    let mut speaker = Speaker::new(board.speaker_pin, board.PWM0);
+    let pac = hal::pac::Peripherals::take().unwrap();
+    let p0 = gpio::p0::Parts::new(pac.P0);
+    let p1 = gpio::p1::Parts::new(pac.P1);
 
-    speaker.play_note(0);
+    let txd = p0.p0_06.into_push_pull_output(gpio::Level::High).degrade();
+    let rxd = p1.p1_08.into_floating_input().degrade();
 
-    uart.write(b"Hello, world!\r\n");
+    let uart_pins = uarte::Pins {
+        txd,
+        rxd,
+        cts: None,
+        rts: None,
+    };
 
-    loop {
-        uart.write(b"Hello, world!\r\n");
-    }
+    let mut serial = Uarte::new(
+        pac.UARTE0,
+        uart_pins,
+        uarte::Parity::EXCLUDED,
+        uarte::Baudrate::BAUD115200,
+    );
+
+    write!(serial, "Hello, World!\r\n").unwrap();
+
+    loop {}
 }
